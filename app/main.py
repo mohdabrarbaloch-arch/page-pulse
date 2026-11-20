@@ -181,6 +181,12 @@ def health() -> HealthOut:
     )
 
 
+@app.get("/api/health", tags=["system"])
+def api_health() -> dict:
+    """Simple health-check for Vercel and other platform monitors."""
+    return {"status": "ok"}
+
+
 app.include_router(auth.router)
 app.include_router(pages.router)
 

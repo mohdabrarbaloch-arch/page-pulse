@@ -279,6 +279,30 @@ section.
 
 ---
 
+## Deploy to Vercel
+
+### Required Environment Variables
+Set these in your Vercel project settings:
+
+| Variable | Description |
+|---|---|
+| `SECRET_KEY` | App secret key for sessions/JWT |
+| `DATABASE_URL` | PostgreSQL connection string (e.g. from Neon or Vercel Postgres) |
+| `FB_GRAPH_TOKEN` | Facebook Graph API access token |
+| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins (e.g. `https://yourapp.vercel.app`) |
+
+### Notes
+- Vercel's filesystem is ephemeral — SQLite is not supported in production. Use a hosted PostgreSQL database (e.g. [Neon](https://neon.tech) or [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)).
+- The app detects `DATABASE_URL` at startup: if set to a PostgreSQL URL, it uses PostgreSQL; otherwise it falls back to SQLite for local development.
+- Static files are served through the FastAPI app via the `/static/` route in `vercel.json`.
+- Set `ENVIRONMENT=production` in Vercel to enable production-mode checks.
+- Set `CORS_ORIGINS` to your Vercel deployment URL to lock down CORS (e.g. `https://yourapp.vercel.app`).
+
+### One-Click Deploy
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/mohdabrarbaloch-arch/page-pulse)
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
