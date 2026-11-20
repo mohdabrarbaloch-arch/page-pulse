@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Page Pulse — Facebook Page Analytics</title>
+<meta name="description" content="Analyse a Facebook page: engagement, posting cadence, format performance and the insights worth acting on.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<!-- ── Auth gate ─────────────────────────────────────────────────────────── -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="brand brand--lg">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 13h3l2.5-7 3.5 14 3-9 2 2h4"/>
+        </svg>
+      </span>
+      <span class="brand__text">Page<span>Pulse</span></span>
+    </div>
+    <p class="auth-card__lede">
+      Facebook page analytics that show their working. Every number states what it
+      measured and over how many posts.
+    </p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" role="tab" aria-selected="true" data-auth-tab="login">Sign in</button>
+      <button class="tab" role="tab" aria-selected="false" data-auth-tab="register">Create account</button>
+    </div>
+
+    <form id="login-form" class="form" autocomplete="on">
+      <label class="field">
+        <span class="field__label">Email</span>
+        <input type="email" name="email" required autocomplete="username" placeholder="you@example.com">
+      </label>
+      <label class="field">
+        <span class="field__label">Password</span>
+        <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Sign in</button>
+    </form>
+
+    <form id="register-form" class="form is-hidden" autocomplete="on">
+      <label class="field">
+        <span class="field__label">Display name</span>
+        <input type="text" name="display_name" autocomplete="name" placeholder="Your name">
+      </label>
+      <label class="field">
+        <span class="field__label">Email</span>
+        <input type="email" name="email" required autocomplete="username" placeholder="you@example.com">
+      </label>
+      <label class="field">
+        <span class="field__label">Password</span>
+        <input type="password" name="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+        <span class="field__hint">Minimum 8 characters. Stored as a bcrypt hash.</span>
+      </label>
+      <button type="submit" class="btn btn--primary btn--block">Create account</button>
+    </form>
+
+    <p id="auth-error" class="alert alert--error is-hidden" role="alert"></p>
+  </div>
+</div>
+
+<!-- ── Dashboard ─────────────────────────────────────────────────────────── -->
+<div id="app" class="app is-hidden">
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 13h3l2.5-7 3.5 14 3-9 2 2h4"/>
+          </svg>
+        </span>
+        <span class="brand__text">Page<span>Pulse</span></span>
+      </div>
+
+      <div class="topbar__actions">
+        <label class="select-wrap">
+          <span class="sr-only">Analysis window</span>
+          <select id="window-select">
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="180" selected>Last 180 days</option>
+            <option value="365">Last 365 days</option>
+          </select>
+        </label>
+        <button id="add-page-btn" class="btn btn--ghost">+ Add page</button>
+        <button id="signout-btn" class="btn btn--ghost" title="Sign out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Page switcher -->
+    <nav id="page-tabs" class="page-tabs" aria-label="Your pages"></nav>
+
+    <!-- Empty state -->
+    <section id="empty-state" class="empty is-hidden">
+      <div class="empty__icon" aria-hidden="true">📊</div>
+      <h2>No pages yet</h2>
+      <p>Add one of the sample pages to see the dashboard, or connect a real page with a Facebook access token.</p>
+      <button class="btn btn--primary" data-open-add>Add your first page</button>
+    </section>
+
+    <!-- Loading -->
+    <section id="loading" class="loading is-hidden" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Crunching the numbers…</p>
+    </section>
+
+    <!-- Dashboard body -->
+    <div id="dashboard" class="is-hidden">
+
+      <!-- Data-source banner -->
+      <div id="source-banner" class="banner" role="status"></div>
+
+      <!-- Page overview -->
+      <section class="overview card">
+        <div class="overview__head">
+          <div class="overview__avatar" id="page-avatar" aria-hidden="true"></div>
+          <div class="overview__meta">
+            <h1 id="page-name" class="overview__name"></h1>
+            <p class="overview__sub">
+              <span id="page-category" class="chip"></span>
+              <span id="page-verified" class="chip chip--ok is-hidden">✓ Verified</span>
+              <span id="page-address" class="overview__addr"></span>
+            </p>
+            <p id="page-description" class="overview__desc"></p>
+          </div>
+        </div>
+        <dl class="overview__stats">
+          <div><dt>Followers</dt><dd id="stat-followers">—</dd></div>
+          <div><dt>Page likes</dt><dd id="stat-likes">—</dd></div>
+          <div><dt>Talking about</dt><dd id="stat-talking">—</dd></div>
+          <div><dt>Posts analysed</dt><dd id="stat-posts">—</dd></div>
+        </dl>
+      </section>
+
+      <!-- Key metrics -->
+      <section class="metrics" id="metrics"></section>
+
+      <!-- Charts -->
+      <section class="charts">
+        <div class="card chart-card">
+          <div class="card__head">
+            <h2>Engagement over time</h2>
+            <p class="card__sub" id="chart-engagement-sub"></p>
+          </div>
+          <div class="chart-box"><canvas id="chart-engagement"></canvas></div>
+        </div>
+        <div class="card chart-card">
+          <div class="card__head">
+            <h2>Follower growth</h2>
+            <p class="card__sub" id="chart-followers-sub"></p>
+          </div>
+          <div class="chart-box"><canvas id="chart-followers"></canvas></div>
+        </div>
+      </section>
+
+      <!-- Insights -->
+      <section class="card">
+        <div class="card__head">
+          <h2>What to act on</h2>
+          <p class="card__sub">Each finding cites the numbers behind it. Sorted by how much it matters.</p>
+        </div>
+        <div id="insights" class="insights"></div>
+      </section>
+
+      <!-- Format + timing -->
+      <section class="split">
+        <div class="card">
+          <div class="card__head">
+            <h2>Format performance</h2>
+            <p class="card__sub">Median engagement per post, by media type.</p>
+          </div>
+          <div id="media-mix" class="mix"></div>
+        </div>
+        <div class="card">
+          <div class="card__head">
+            <h2>Best posting times</h2>
+            <p class="card__sub" id="slots-sub"></p>
+          </div>
+          <div id="slots" class="slots"></div>
+        </div>
+      </section>
+
+      <!-- Posts -->
+      <section class="card">
+        <div class="card__head">
+          <h2>Post performance</h2>
+          <p class="card__sub">Ranked by total engagement (likes + comments + shares).</p>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="posts-table">
+            <thead>
+              <tr>
+                <th scope="col">Post</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="num">Likes</th>
+                <th scope="col" class="num">Comments</th>
+                <th scope="col" class="num">Shares</th>
+                <th scope="col" class="num">Total</th>
+                <th scope="col" class="num">Rate</th>
+              </tr>
+            </thead>
+            <tbody id="posts-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <p id="foot-note"></p>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<!-- ── Add page modal ────────────────────────────────────────────────────── -->
+<div id="add-modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="add-title">
+  <div class="modal__backdrop" data-close-modal></div>
+  <div class="modal__panel">
+    <div class="modal__head">
+      <h2 id="add-title">Add a page</h2>
+      <button class="icon-btn" data-close-modal aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <h3 class="modal__section">Sample data</h3>
+      <p class="modal__note">
+        Generated sample pages, so you can explore the dashboard without a Facebook
+        token. Every figure is synthetic and the dashboard says so.
+      </p>
+      <div id="demo-list" class="demo-list"></div>
+
+      <h3 class="modal__section">Connect a real page</h3>
+      <p class="modal__note" id="live-note"></p>
+      <form id="live-form" class="form form--inline">
+        <label class="field">
+          <span class="field__label">Facebook page ID</span>
+          <input type="text" name="external_id" placeholder="e.g. 61552661620882" pattern="[A-Za-z0-9_.\-]+">
+        </label>
+        <button type="submit" class="btn btn--primary">Connect</button>
+      </form>
+      <p id="add-error" class="alert alert--error is-hidden" role="alert"></p>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast is-hidden" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

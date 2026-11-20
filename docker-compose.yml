@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pagepulse
+      POSTGRES_PASSWORD: pagepulse
+      POSTGRES_DB: pagepulse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pagepulse -d pagepulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://pagepulse:pagepulse@db:5432/pagepulse
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in your .env file}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      FB_GRAPH_TOKEN: ${FB_GRAPH_TOKEN:-}
+      FB_GRAPH_VERSION: ${FB_GRAPH_VERSION:-v21.0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      SEED_DEMO_ON_STARTUP: ${SEED_DEMO_ON_STARTUP:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
