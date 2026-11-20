@@ -289,7 +289,7 @@ Set these in your Vercel project settings:
 | `SECRET_KEY` | App secret key for sessions/JWT |
 | `DATABASE_URL` | PostgreSQL connection string (e.g. from Neon or Vercel Postgres) |
 | `FB_GRAPH_TOKEN` | Facebook Graph API access token |
-| `ALLOWED_ORIGINS` | Comma-separated allowed CORS origins (e.g. `https://yourapp.vercel.app`) |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins (e.g. `https://yourapp.vercel.app`) |
 
 ### Notes
 - Vercel's filesystem is ephemeral — SQLite is not supported in production. Use a hosted PostgreSQL database (e.g. [Neon](https://neon.tech) or [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)).
