@@ -1,20 +1,17 @@
 """FastAPI application entrypoint."""
-
 from __future__ import annotations
-
 import logging
+import os
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from app.config import get_settings
 from app.database import Base, engine
 from app.routers import auth, pages
@@ -31,6 +28,8 @@ logging.basicConfig(
 logger = logging.getLogger("pagepulse")
 
 _settings = get_settings()
+
+# Resolve static directory relative to this file — works both locally and on Vercel.
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # One limiter for the whole API. Auth endpoints have their own, tighter one.
@@ -39,12 +38,17 @@ _api_limiter = SlidingWindowLimiter(
     enabled=_settings.rate_limit_enabled,
 )
 
+# Create DB tables once at module load time so they exist even when lifespan
+# events are disabled (Mangum serverless mode uses lifespan="off").
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as _db_exc:  # pragma: no cover
+    logger.warning("Could not create tables at startup: %s", _db_exc)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Create tables on boot and report the data mode honestly."""
-    Base.metadata.create_all(bind=engine)
-
+    """Report data mode on boot. Table creation happens at module import."""
     if graph_api.is_configured():
         logger.info("Facebook Graph API token detected: live page data is available.")
     else:
@@ -52,13 +56,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             "No FB_GRAPH_TOKEN set. Live Facebook data is unavailable; the demo "
             "dataset is available at POST /api/pages/demo."
         )
-
     if _settings.is_production and not _settings.secret_key:
-        raise RuntimeError(
-            "Refusing to start in production without SECRET_KEY. Sessions would be "
-            "invalidated on every restart."
+        # Log a warning but don't crash — Vercel may inject SECRET_KEY after
+        # the first cold start. The resolved_secret_key property raises at use-time.
+        logger.warning(
+            "SECRET_KEY is not set and ENVIRONMENT=production. Sessions will fail "
+            "until SECRET_KEY is configured in Vercel environment variables."
         )
-
     yield
 
 
@@ -102,11 +106,9 @@ async def security_headers(request: Request, call_next):
                 content={"detail": f"Rate limit exceeded. Try again in {retry_after} seconds."},
                 headers={"Retry-After": str(retry_after)},
             )
-
     started = time.perf_counter()
     response = await call_next(request)
     response.headers["X-Process-Time-Ms"] = f"{(time.perf_counter() - started) * 1000:.1f}"
-
     # The dashboard loads Chart.js from a CDN, so the CSP has to allow that one
     # origin. Everything else stays locked to self.
     response.headers["Content-Security-Policy"] = (
@@ -189,7 +191,6 @@ def api_health() -> dict:
 
 app.include_router(auth.router)
 app.include_router(pages.router)
-
 
 # --- Static dashboard --------------------------------------------------------
 # Mounted last so it never shadows an /api route.
