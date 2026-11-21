@@ -53,6 +53,12 @@ ignore = [
 # import to sit below the assignments.
 "tests/*" = ["E402"]
 
+[tool.vercel]
+entrypoint = "app.main:app"
+
+[tool.vercel.fastapi.static]
+cdn = false
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
